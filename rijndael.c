@@ -70,8 +70,11 @@ void sub_bytes(unsigned char *block) {
   // here we  are mapping each byte in the block to a value on the AES s_box
   // interesting thing is that C can interpret hex values as an index and even
   // binary
-  for (int i = 0; i < BLOCK_SIZE; i++) {
-    block[i] = s_box[block[i]];
+  for (int row = 0; row < 4; row++) {
+    for (int col = 0; col < 4; col++) {
+      unsigned char byte = BLOCK_ACCESS(block, row, col);
+      BLOCK_ACCESS(block, row, col) = s_box[byte];
+    }
   }
 
   // no need to return anything as this is the pointer to the block
