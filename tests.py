@@ -56,15 +56,25 @@ class TestAES(unittest.TestCase):
 
     def test_sub_bytes(self):
         # Test the SubBytes operation
-        self.run_test(sub_bytes, rijndael.sub_bytes, "sub_bytes")
+        self.run_test(sub_bytes, rijndael.sub_bytes, "SubBytes")
 
     def test_shift_rows(self):
         # Test the ShiftRows operation
-        self.run_test(shift_rows, rijndael.shift_rows, "shift_rows")
+        self.run_test(shift_rows, rijndael.shift_rows, "ShiftRows")
 
     def test_mix_columns(self):
         # Test the MixColumns operation
-        self.run_test(mix_columns, rijndael.mix_columns, "mix_columns")
+        self.run_test(mix_columns, rijndael.mix_columns, "MixColumn")
+
+    def test_inv_sub_bytes(self):
+        # Test the Inverse SubBytes operation
+        self.run_test(inv_sub_bytes, rijndael.invert_sub_bytes, "Invert SubBytes")
+
+    def test_inv_shift_rows(self):
+        self.run_test(inv_shift_rows, rijndael.invert_shift_rows, "Invert ShiftRows")
+
+    def test_inv_mix_columns(self):
+        self.run_test(inv_mix_columns, rijndael.invert_mix_columns, "Invert MixColumns")
 
 
 if __name__ == "__main__":

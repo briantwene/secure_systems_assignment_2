@@ -1,6 +1,11 @@
 /*
- * TODO: Add your name and student number here, along with
- *       a brief description of this code.
+ * Name: Brian Twene
+ * Student Number: C19344543
+ *
+ * This code implements the 128-bit version of the Rijndael cipher, also known
+ * as Advanced Encryption Standard (AES). It includes functions for key
+ * expansion, encryption, and decryption. The code uses a block size of 16 bytes
+ * and a key size of 16 bytes (128 bits).
  */
 
 #include <stdlib.h>
@@ -60,8 +65,8 @@ static const unsigned char inv_s_box[256] = {
     0x17, 0x2B, 0x04, 0x7E, 0xBA, 0x77, 0xD6, 0x26, 0xE1, 0x69, 0x14, 0x63,
     0x55, 0x21, 0x0C, 0x7D};
 
-unsigned char xtime(unsigned char byte) {
-  return ((byte << 1) ^ (((byte >> 7) & 1) * 0x1b));
+unsigned char xtime(unsigned char a) {
+  return ((a << 1) ^ ((a & 0x80) ? 0x1B : 0)) & 0xFF;
 }
 /*
  * Operations used when encrypting a block
@@ -81,8 +86,6 @@ void sub_bytes(unsigned char *block) {
 }
 
 void shift_rows(unsigned char *block) {
-  // TODO: Implement me!
-
   // blocks are in column-major order
 
   // 1 5 9  13
@@ -92,30 +95,29 @@ void shift_rows(unsigned char *block) {
   unsigned char temp[BLOCK_SIZE];
 
   // The first row isn't shifted.
-  temp[0] = block[0];
-  temp[4] = block[4];
-  temp[8] = block[8];
-  temp[12] = block[12];
+  for (int i = 0; i < 4; i++) {
+    BLOCK_ACCESS(temp, i, 0) = BLOCK_ACCESS(block, i, 0);
+  }
 
   // The second row is shifted one position to the left.
-  temp[1] = block[5];
-  temp[5] = block[9];
-  temp[9] = block[13];
-  temp[13] = block[1];
+  BLOCK_ACCESS(temp, 0, 1) = BLOCK_ACCESS(block, 1, 1);
+  BLOCK_ACCESS(temp, 1, 1) = BLOCK_ACCESS(block, 2, 1);
+  BLOCK_ACCESS(temp, 2, 1) = BLOCK_ACCESS(block, 3, 1);
+  BLOCK_ACCESS(temp, 3, 1) = BLOCK_ACCESS(block, 0, 1);
 
   // The third row is shifted two positions to the left.
-  temp[2] = block[10];
-  temp[6] = block[14];
-  temp[10] = block[2];
-  temp[14] = block[6];
+  BLOCK_ACCESS(temp, 0, 2) = BLOCK_ACCESS(block, 2, 2);
+  BLOCK_ACCESS(temp, 1, 2) = BLOCK_ACCESS(block, 3, 2);
+  BLOCK_ACCESS(temp, 2, 2) = BLOCK_ACCESS(block, 0, 2);
+  BLOCK_ACCESS(temp, 3, 2) = BLOCK_ACCESS(block, 1, 2);
 
   // The fourth row is shifted three positions to the left.
-  temp[3] = block[15];
-  temp[7] = block[3];
-  temp[11] = block[7];
-  temp[15] = block[11];
+  BLOCK_ACCESS(temp, 0, 3) = BLOCK_ACCESS(block, 3, 3);
+  BLOCK_ACCESS(temp, 1, 3) = BLOCK_ACCESS(block, 0, 3);
+  BLOCK_ACCESS(temp, 2, 3) = BLOCK_ACCESS(block, 1, 3);
+  BLOCK_ACCESS(temp, 3, 3) = BLOCK_ACCESS(block, 2, 3);
 
-  // apply the changes to the block
+  // Apply the changes to the block
   for (int i = 0; i < BLOCK_SIZE; i++) {
     block[i] = temp[i];
   }
@@ -150,57 +152,68 @@ void mix_columns(unsigned char *block) {
  */
 void invert_sub_bytes(unsigned char *block) {
   // same as sub_bytes but use an inverse table lookup
-  for (int i = 0; i < BLOCK_SIZE; i++) {
-    block[i] = inv_s_box[block[i]];
+  for (int i = 0; i < 4; ++i) {
+    for (int j = 0; j < 4; ++j) {
+      BLOCK_ACCESS(block, i, j) = inv_s_box[BLOCK_ACCESS(block, i, j)];
+    }
   }
 }
 
 void invert_shift_rows(unsigned char *block) {
   unsigned char temp[BLOCK_SIZE];
 
-  // The first row is not shifted.
+  // The first row isn't shifted.
   for (int i = 0; i < 4; i++) {
-    temp[i] = block[i];
+    BLOCK_ACCESS(temp, i, 0) = BLOCK_ACCESS(block, i, 0);
   }
 
   // The second row is shifted one position to the right.
-  temp[4] = block[13];
-  temp[5] = block[1];
-  temp[6] = block[5];
-  temp[7] = block[9];
+  BLOCK_ACCESS(temp, 0, 1) = BLOCK_ACCESS(block, 3, 1);
+  BLOCK_ACCESS(temp, 1, 1) = BLOCK_ACCESS(block, 0, 1);
+  BLOCK_ACCESS(temp, 2, 1) = BLOCK_ACCESS(block, 1, 1);
+  BLOCK_ACCESS(temp, 3, 1) = BLOCK_ACCESS(block, 2, 1);
 
   // The third row is shifted two positions to the right.
-  temp[8] = block[10];
-  temp[9] = block[14];
-  temp[10] = block[2];
-  temp[11] = block[6];
+  BLOCK_ACCESS(temp, 0, 2) = BLOCK_ACCESS(block, 2, 2);
+  BLOCK_ACCESS(temp, 1, 2) = BLOCK_ACCESS(block, 3, 2);
+  BLOCK_ACCESS(temp, 2, 2) = BLOCK_ACCESS(block, 0, 2);
+  BLOCK_ACCESS(temp, 3, 2) = BLOCK_ACCESS(block, 1, 2);
 
   // The fourth row is shifted three positions to the right.
-  temp[12] = block[3];
-  temp[13] = block[7];
-  temp[14] = block[11];
-  temp[15] = block[15];
+  BLOCK_ACCESS(temp, 0, 3) = BLOCK_ACCESS(block, 1, 3);
+  BLOCK_ACCESS(temp, 1, 3) = BLOCK_ACCESS(block, 2, 3);
+  BLOCK_ACCESS(temp, 2, 3) = BLOCK_ACCESS(block, 3, 3);
+  BLOCK_ACCESS(temp, 3, 3) = BLOCK_ACCESS(block, 0, 3);
 
-  // apply the changes to the block
+  // Apply the changes to the block
   for (int i = 0; i < BLOCK_SIZE; i++) {
     block[i] = temp[i];
   }
 }
-
+// This function inverts the mix columns operation in AES
 void invert_mix_columns(unsigned char *block) {
-  // TODO: Implement me!
   unsigned char tmp[4];
+
+  // Loop over each column.
   for (int i = 0; i < 4; ++i) {
+    // Copy the current column to the temporary array.
     for (int j = 0; j < 4; ++j) {
-      tmp[j] = block[i * 4 + j];
+      tmp[j] = BLOCK_ACCESS(block, i, j);
     }
+
+    // Calculate u and v.
     unsigned char u = xtime(xtime(tmp[0] ^ tmp[2]));
     unsigned char v = xtime(xtime(tmp[1] ^ tmp[3]));
-    for (int j = 0; j < 4; ++j) {
-      block[i * 4 + j] ^= (j < 2) ? u : v;
-    }
-    mix_columns(block + i * 4);
+
+    // Apply u and v to the column.
+    BLOCK_ACCESS(block, i, 0) ^= u;
+    BLOCK_ACCESS(block, i, 1) ^= v;
+    BLOCK_ACCESS(block, i, 2) ^= u;
+    BLOCK_ACCESS(block, i, 3) ^= v;
   }
+
+  // Mix the columns.
+  mix_columns(block);
 }
 
 /*
