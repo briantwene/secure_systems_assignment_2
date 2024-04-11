@@ -124,20 +124,24 @@ void shift_rows(unsigned char *block) {
 void mix_columns(unsigned char *block) {
   // implemented based off python implementation
   // uses a complex multiplication galoais, its not like simple multiplication
-  unsigned char tmp[4], tm, t;
+  // Temporary array to hold the current column.
+  unsigned char tmp[4], t;
+
+  // Loop over each column.
   for (int i = 0; i < 4; ++i) {
+    // Copy the current column to the temporary array.
     for (int j = 0; j < 4; ++j) {
-      tmp[j] = block[i * 4 + j];
+      tmp[j] = BLOCK_ACCESS(block, i, j);
     }
-    t = tmp[0];
-    tm = tmp[0] ^ tmp[1] ^ tmp[2] ^ tmp[3];
+
+    // XOR all bytes in the column together.
+    t = tmp[0] ^ tmp[1] ^ tmp[2] ^ tmp[3];
+
+    // Loop over each byte in the column.
     for (int j = 0; j < 4; ++j) {
-      block[i * 4 + j] ^= tm ^ xtime(tmp[j] ^ tmp[(j + 1) % 4]);
+      // Mix the column and apply it to the block.
+      BLOCK_ACCESS(block, i, j) ^= t ^ xtime(tmp[j] ^ tmp[(j + 1) % 4]);
     }
-    block[i * 4] ^= xtime(xtime(tmp[0] ^ tmp[1])) ^ xtime(tmp[0] ^ tmp[2]);
-    block[i * 4 + 1] ^= xtime(xtime(tmp[1] ^ tmp[2])) ^ xtime(tmp[1] ^ tmp[3]);
-    block[i * 4 + 2] ^= xtime(xtime(tmp[2] ^ tmp[3])) ^ xtime(tmp[0] ^ tmp[2]);
-    block[i * 4 + 3] ^= xtime(xtime(tmp[3] ^ tmp[0])) ^ xtime(tmp[1] ^ tmp[3]);
   }
 }
 
