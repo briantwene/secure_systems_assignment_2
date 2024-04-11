@@ -2,3 +2,4 @@ main
 *.o
 *.so
 *.pdf
+__pycache__/
