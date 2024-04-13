@@ -8,10 +8,12 @@
  * and a key size of 16 bytes (128 bits).
  */
 
-#include <stdlib.h>
-// TODO: Any other files you need to include should go here
-
 #include "rijndael.h"
+
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define KEY_SIZE 16
 #define EXPANDED_KEY_SIZE 176
@@ -64,6 +66,13 @@ static const unsigned char inv_s_box[256] = {
     0xAE, 0x2A, 0xF5, 0xB0, 0xC8, 0xEB, 0xBB, 0x3C, 0x83, 0x53, 0x99, 0x61,
     0x17, 0x2B, 0x04, 0x7E, 0xBA, 0x77, 0xD6, 0x26, 0xE1, 0x69, 0x14, 0x63,
     0x55, 0x21, 0x0C, 0x7D};
+
+unsigned char r_con[256] = {
+    0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36,
+    0x6C, 0xD8, 0xAB, 0x4D, 0x9A, 0x2F, 0x5E, 0xBC, 0x63, 0xC6, 0x97,
+    0x35, 0x6A, 0xD4, 0xB3, 0x7D, 0xFA, 0xEF, 0xC5, 0x91, 0x39,
+    // The rest of the array should be filled with 0s.
+};
 
 unsigned char xtime(unsigned char a) {
   return ((a << 1) ^ ((a & 0x80) ? 0x1B : 0)) & 0xFF;
@@ -220,7 +229,11 @@ void invert_mix_columns(unsigned char *block) {
  * This operation is shared between encryption and decryption
  */
 void add_round_key(unsigned char *block, unsigned char *round_key) {
-  // TODO: Implement me!
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
+      BLOCK_ACCESS(block, i, j) ^= BLOCK_ACCESS(round_key, i, j);
+    }
+  }
 }
 
 /*
@@ -229,8 +242,49 @@ void add_round_key(unsigned char *block, unsigned char *round_key) {
  * vector, containing the 11 round keys one after the other
  */
 unsigned char *expand_key(unsigned char *cipher_key) {
-  // TODO: Implement me!
-  return 0;
+  int key_size = 16;  // Size of key in bytes
+  int rounds = 10;    // Number of rounds for 128-bit AES
+  int iteration_size = key_size / 4;
+  int i, j;
+
+  // Allocate memory for the expanded key
+  char *expanded_key = malloc((rounds + 1) * key_size * sizeof(char));
+
+  // Copy the initial cipher key into expanded_key
+  for (i = 0; i < iteration_size; i++) {
+    for (j = 0; j < 4; j++) {
+      expanded_key[i * 4 + j] = cipher_key[i * 4 + j];
+    }
+  }
+
+  // Key expansion
+  char word[4], temp;
+  for (; i < (rounds + 1) * 4; i++) {
+    memcpy(word, &expanded_key[(i - 1) * 4], 4);
+
+    if (i % iteration_size == 0) {
+      // Circular shift
+      temp = word[0];
+      memmove(word, word + 1, 3);
+      word[3] = temp;
+
+      // S-box substitution
+      for (j = 0; j < 4; j++) {
+        word[j] = s_box[(uint8_t)word[j]];
+      }
+
+      // XOR with R-con
+      word[0] ^= r_con[i / iteration_size];
+    }
+
+    // XOR with equivalent word from previous iteration
+    for (j = 0; j < 4; j++) {
+      expanded_key[i * 4 + j] =
+          expanded_key[(i - iteration_size) * 4 + j] ^ word[j];
+    }
+  }
+
+  return expanded_key;
 }
 
 /*

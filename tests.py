@@ -11,6 +11,8 @@ from aes.aes import (
     inv_shift_rows,
     mix_columns,
     inv_mix_columns,
+    add_round_key,
+    AES,
 )
 import sys
 
@@ -54,6 +56,53 @@ class TestAES(unittest.TestCase):
                 print(f"Running {operation_name} test, iteration {i+1}")
                 self.assertEqual(c_result, python_result)
 
+    def run_test_with_key(self, python_operation, c_operation, operation_name):
+        # Run a test for a given operation that requires a round key,
+        # comparing the results of the Python and C implementations
+        for i in range(3):
+            self.generate_data()
+
+            # Generate a random 16-byte round key and convert it to a matrix for the Python implementation
+            # and a ctypes string buffer for the C implementation
+            round_key_buffer = random.randbytes(16)
+            python_round_key = bytes2matrix(round_key_buffer)
+            c_round_key = ctypes.create_string_buffer(round_key_buffer)
+
+            python_operation(self.python_block, python_round_key)
+            c_operation(self.c_block, c_round_key)
+
+            python_result = matrix2bytes(self.python_block)
+            c_result = self.remove_last_null_byte(self.c_block.raw)
+
+            # Use a subTest to provide more detailed output in case of a test failure
+            with self.subTest(operation=operation_name):
+                print(f"Running {operation_name} test, iteration {i+1}")
+                self.assertEqual(c_result, python_result)
+
+    def run_test_expand_key(self, python_operation, c_operation):
+        # Run a test for the expand_key operation,
+        # comparing the results of the Python and C implementations
+        for i in range(3):
+            self.generate_data()
+
+            # Generate a random 16-byte round key and convert it to a matrix for the Python implementation
+            # and a ctypes string buffer for the C implementation
+            round_key_buffer = random.randbytes(16)
+            python_round_key = round_key_buffer
+            c_round_key = ctypes.create_string_buffer(round_key_buffer)
+            key_size = ctypes.c_int(len(round_key_buffer))
+
+            python_operation(python_round_key)
+            c_operation(c_round_key, key_size)
+
+            python_result = matrix2bytes(self.python_block)
+            c_result = self.remove_last_null_byte(self.c_block.raw)
+
+            # Use a subTest to provide more detailed output in case of a test failure
+            with self.subTest(operation="ExpandKey"):
+                print(f"Running ExpandKey test, iteration {i+1}")
+                self.assertEqual(c_result, python_result)
+
     def test_sub_bytes(self):
         # Test the SubBytes operation
         self.run_test(sub_bytes, rijndael.sub_bytes, "SubBytes")
@@ -75,6 +124,13 @@ class TestAES(unittest.TestCase):
 
     def test_inv_mix_columns(self):
         self.run_test(inv_mix_columns, rijndael.invert_mix_columns, "Invert MixColumns")
+
+    def test_add_round_key(self):
+        self.run_test_with_key(add_round_key, rijndael.add_round_key, "Add RoundKey")
+
+    def test_expand_key(self):
+        python_aes = AES(random.randbytes(16))
+        self.run_test_expand_key(python_aes._expand_key, rijndael.expand_key)
 
 
 if __name__ == "__main__":

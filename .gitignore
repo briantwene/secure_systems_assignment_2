@@ -3,3 +3,4 @@ main
 *.so
 *.pdf
 __pycache__/
+.vscode
