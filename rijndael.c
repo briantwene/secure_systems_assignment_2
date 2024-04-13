@@ -292,10 +292,29 @@ unsigned char *expand_key(unsigned char *cipher_key) {
  * header file should go here
  */
 unsigned char *aes_encrypt_block(unsigned char *plaintext, unsigned char *key) {
-  // TODO: Implement me!
-
   unsigned char *output =
       (unsigned char *)malloc(sizeof(unsigned char) * BLOCK_SIZE);
+
+  // expand the key
+  unsigned char *expanded_key = expand_key(key);
+  // create a copy of the plaintext
+  memcpy(output, plaintext, BLOCK_SIZE);
+
+  // add the first round key
+  add_round_key(output, &expanded_key[0 * BLOCK_SIZE]);
+
+  for (int i = 1; i < 10; i++) {
+    sub_bytes(output);
+    shift_rows(output);
+    mix_columns(output);
+    add_round_key(output, &expanded_key[i * BLOCK_SIZE]);
+  }
+
+  sub_bytes(output);
+  shift_rows(output);
+  add_round_key(output, &expanded_key[10 * BLOCK_SIZE]);
+
+  free(expanded_key);
   return output;
 }
 

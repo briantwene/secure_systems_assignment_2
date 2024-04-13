@@ -132,6 +132,25 @@ class TestAES(unittest.TestCase):
         python_aes = AES(random.randbytes(16))
         self.run_test_expand_key(python_aes._expand_key, rijndael.expand_key)
 
+    def test_aes_encrypt_block(self):
+        # Test the AES encryption process
+        for i in range(3):
+            # Generate a random 16-byte plaintext and key
+            self.generate_data()
+            key_buffer = random.randbytes(16)
+            plaintext = random.randbytes(16)
+
+            python_aes = AES(key_buffer)
+            python_result = python_aes.encrypt_block(plaintext)
+
+            rijndael.aes_encrypt_block.restype = ctypes.c_void_p
+            c_result = ctypes.string_at(
+                rijndael.aes_encrypt_block(plaintext, key_buffer), 16
+            )
+
+            with self.subTest(operation="AESEncryptBlock", iteration=i + 1):
+                self.assertEqual(c_result, python_result)
+
 
 if __name__ == "__main__":
     # Run the tests with a higher verbosity level to see detailed output
