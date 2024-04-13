@@ -227,6 +227,9 @@ void invert_mix_columns(unsigned char *block) {
 
 /*
  * This operation is shared between encryption and decryption
+ *
+ * The add_round_key function blends data with the round key using XOR
+ * operation. This function modifies the block in-place.
  */
 void add_round_key(unsigned char *block, unsigned char *round_key) {
   for (int i = 0; i < 4; i++) {
@@ -260,10 +263,11 @@ unsigned char *expand_key(unsigned char *cipher_key) {
   // Key expansion
   char word[4], temp;
   for (; i < (rounds + 1) * 4; i++) {
+    // copy the last word from the expanded key
     memcpy(word, &expanded_key[(i - 1) * 4], 4);
 
     if (i % iteration_size == 0) {
-      // Circular shift
+      // Do a circular shift on the word
       temp = word[0];
       memmove(word, word + 1, 3);
       word[3] = temp;
@@ -273,7 +277,7 @@ unsigned char *expand_key(unsigned char *cipher_key) {
         word[j] = s_box[(uint8_t)word[j]];
       }
 
-      // XOR with R-con
+      // Do a XOR with R-con
       word[0] ^= r_con[i / iteration_size];
     }
 
@@ -284,6 +288,7 @@ unsigned char *expand_key(unsigned char *cipher_key) {
     }
   }
 
+  // return the expanded key
   return expanded_key;
 }
 
@@ -292,6 +297,7 @@ unsigned char *expand_key(unsigned char *cipher_key) {
  * header file should go here
  */
 unsigned char *aes_encrypt_block(unsigned char *plaintext, unsigned char *key) {
+  // allocate memory with malloc, a dynamic pointer
   unsigned char *output =
       (unsigned char *)malloc(sizeof(unsigned char) * BLOCK_SIZE);
 
@@ -303,6 +309,7 @@ unsigned char *aes_encrypt_block(unsigned char *plaintext, unsigned char *key) {
   // add the first round key
   add_round_key(output, &expanded_key[0 * BLOCK_SIZE]);
 
+  // then run the important stages 9 times
   for (int i = 1; i < 10; i++) {
     sub_bytes(output);
     shift_rows(output);
@@ -310,10 +317,12 @@ unsigned char *aes_encrypt_block(unsigned char *plaintext, unsigned char *key) {
     add_round_key(output, &expanded_key[i * BLOCK_SIZE]);
   }
 
+  // run the final round
   sub_bytes(output);
   shift_rows(output);
   add_round_key(output, &expanded_key[10 * BLOCK_SIZE]);
 
+  // free up memory in the expanded key
   free(expanded_key);
   return output;
 }
@@ -334,14 +343,18 @@ unsigned char *aes_decrypt_block(unsigned char *ciphertext,
 
   for (int i = 9; i > 0; i--) {
     add_round_key(output, &expanded_key[i * BLOCK_SIZE]);
+    // invert the operations of the main rounds
     invert_mix_columns(output);
     invert_shift_rows(output);
     invert_sub_bytes(output);
   }
 
+  // add the inital round key
   add_round_key(output, &expanded_key[0 * BLOCK_SIZE]);
 
+  // free up the memory allocated to the expanded key
   free(expanded_key);
 
+  // return the output now contianing the decrypted text
   return output;
 }
