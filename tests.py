@@ -151,6 +151,25 @@ class TestAES(unittest.TestCase):
             with self.subTest(operation="AESEncryptBlock", iteration=i + 1):
                 self.assertEqual(c_result, python_result)
 
+    def test_aes_decrypt_block(self):
+        # Test the AES decryption process
+        for i in range(3):
+            # Generate a random 16-byte ciphertext and key
+            self.generate_data()
+            key_buffer = random.randbytes(16)
+            ciphertext = random.randbytes(16)
+
+            python_aes = AES(key_buffer)
+            python_result = python_aes.decrypt_block(ciphertext)
+
+            rijndael.aes_decrypt_block.restype = ctypes.c_void_p
+            c_result = ctypes.string_at(
+                rijndael.aes_decrypt_block(ciphertext, key_buffer), 16
+            )
+
+            with self.subTest(operation="AESDecryptBlock", iteration=i + 1):
+                self.assertEqual(c_result, python_result)
+
 
 if __name__ == "__main__":
     # Run the tests with a higher verbosity level to see detailed output
